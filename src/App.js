@@ -1,38 +1,54 @@
-import { useEffect, useState } from "react";
-import PokemonList from "./components/PokemonList";
+import React, { useState, useEffect } from 'react';
+import PokemonList from './PokemonList';
+import axios from 'axios';
+import Pagination from './Pagination';
 
-const POKEMON_URL = 'https://pokeapi.co/api/v2/pokemon';
+const API = "https://pokeapi.co/api/v2/pokemon";
+
+const App = () => {
+
+  const [allPokemon, setAllPokemon] = useState([]);
+  const [currentPageUrl, setCurrentPageUrl] = useState(API);
+  const [nextPageUrl, setNextPageUrl] = useState();
+  const [previousPageUrl, setPreviousPageUrl] = useState();
+  const [loading, setLoading] = useState(true)
 
 
-export default function App() {
-
-  const [allPokemon, setAllPokemon] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    fetch(POKEMON_URL)
-    .then(res => res.json())
-    .then(data => {
-      setAllPokemon(data.results)
-      setIsLoading(false);
-    })
-    .catch((error) => {
-      console.log(error.message)
-    })
-  },[])
+    setLoading(true)
+    let cancel
+    axios.get(currentPageUrl, {
+      cancelToken: new axios.CancelToken(c => cancel = c)
+    }).then(res => {
+      setLoading(false)
+      setNextPageUrl(res.data.next)
+      setPreviousPageUrl(res.data.previous)
+      setAllPokemon(res.data.results.map(p => p.name))
+  })
 
-  // true if api is loading
-  if (isLoading) {
-    return <div>Loading...</div>
-  }
+  return () => cancel()
+}, [currentPageUrl])
 
+function goToNextPage() {
+  setCurrentPageUrl(nextPageUrl)
+}
 
+function goToPreviousPage() {
+  setCurrentPageUrl(previousPageUrl)
+}
   
+
+  if (loading) return "Loading..."
 
   return (
     <div>
-      <h1>Pokemon App</h1>
       <PokemonList allPokemon={allPokemon}/>
+      <Pagination 
+      goToNextPage={nextPageUrl ? goToNextPage : null}
+      goToPreviousPage={previousPageUrl ? goToPreviousPage : null}/>
     </div>
-  );
+  )
 }
+
+export default App
